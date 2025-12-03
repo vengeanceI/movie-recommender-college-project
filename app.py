@@ -9,7 +9,8 @@ API_KEY = "8511be0bf7fdbabf62ca2fbc5f7bb031"
 
 def fetch_poster(movie_id):
     """
-    Given a TMDB movie_id, hit the TMDB API and return the full poster image URL.
+    Fetch poster URL for a given TMDB movie_id.
+    Tries TMDB API; if it fails (timeout, network, etc.), returns a placeholder image.
     """
     url = f"https://api.themoviedb.org/3/movie/{movie_id}"
     params = {
@@ -17,11 +18,24 @@ def fetch_poster(movie_id):
         "language": "en-US"
     }
 
-    response = requests.get(url, params=params)
-    data = response.json()
-    # print(data)  # uncomment if you want to debug API response
+    try:
+        # timeout=5 so it doesn’t hang forever
+        response = requests.get(url, params=params, timeout=5)
+        response.raise_for_status()
+        data = response.json()
 
-    return "https://image.tmdb.org/t/p/w500/" + data["poster_path"]
+        poster_path = data.get("poster_path")
+        if not poster_path:
+            # No poster for this movie -> show a neutral placeholder
+            return "https://via.placeholder.com/300x450?text=No+Poster"
+
+        return "https://image.tmdb.org/t/p/w500" + poster_path
+
+    except Exception as e:
+        # This prevents Streamlit from crashing if TMDB is unreachable
+        print("Error fetching poster for movie_id", movie_id, ":", e)
+        return "https://via.placeholder.com/300x450?text=Error"
+
 
 
 def recommend(movie):
